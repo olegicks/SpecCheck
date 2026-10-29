@@ -31,6 +31,12 @@ def test_match_across_line_break_hyphenation() -> None:
     assert result.verified and result.method is MatchMethod.EXACT
 
 
+def test_hyphenated_compound_split_across_lines_keeps_hyphen() -> None:
+    page = "protected by ECC with single-\nerror correction and double-error detection"
+    result = verify_quote("ECC with single-error correction", page)
+    assert result.verified and result.method is MatchMethod.EXACT
+
+
 def test_match_with_ascii_minus_and_different_case() -> None:
     assert verify_quote("ta ambient temperature -40 … +125 °C", PAGE).verified
 
@@ -40,10 +46,22 @@ def test_degree_spacing_is_irrelevant() -> None:
 
 
 def test_fuzzy_match_tolerates_small_extraction_noise() -> None:
-    result = verify_quote("VDDIO I/O supply 2700 mV t0 5500 mV", PAGE)
+    result = verify_quote("VDDIO I/O suply 2700 mV to 5500 mV", PAGE)
     assert result.verified
     assert result.method is MatchMethod.FUZZY
     assert result.score >= 92
+
+
+def test_fuzzy_match_never_tolerates_changed_numbers() -> None:
+    page = "TA ambient operating temperature: -20 to 85 °C. Some other text follows here."
+    result = verify_quote("TA ambient operating temperature: -40 to 125 °C", page)
+    assert not result.verified
+    assert "numbers differ" in (result.reason or "")
+
+
+def test_fuzzy_alignment_is_expanded_to_whole_numbers() -> None:
+    page = "Program flash size 4096 KB organised in banks"
+    assert verify_quote("Program flash sise 4096 KB", page).verified
 
 
 def test_fabricated_quote_is_rejected() -> None:

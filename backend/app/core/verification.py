@@ -46,12 +46,16 @@ _LINEBREAK_HYPHEN_RE = re.compile(r"(\w)-\s*\n\s*(\w)")
 _QUOTE_CHARS = str.maketrans({"“": '"', "”": '"', "„": '"', "‘": "'", "’": "'", "‚": "'"})
 
 
-def normalize_text(text: str) -> str:
-    """Canonical form used for quote comparison."""
+def normalize_text(text: str, keep_linebreak_hyphens: bool = False) -> str:
+    """Canonical form used for quote comparison.
+
+    By default words split across lines are joined ("tempera-\\nture" -> "temperature").
+    With ``keep_linebreak_hyphens`` the hyphen is kept ("single-\\nerror" -> "single-error"),
+    because a line break can also fall inside a genuinely hyphenated compound.
+    """
     text = text.replace(_SOFT_HYPHEN, "").translate(_ZERO_WIDTH)
     text = normalize_symbols(text).translate(_QUOTE_CHARS)
-    # Join words split across lines: "tempera-\nture" -> "temperature".
-    text = _LINEBREAK_HYPHEN_RE.sub(r"\1\2", text)
+    text = _LINEBREAK_HYPHEN_RE.sub(r"\1-\2" if keep_linebreak_hyphens else r"\1\2", text)
     text = re.sub(r"\s+", " ", text)
     # "- 40 °C" and "-40 °C" / "125 °C" and "125°C" should compare equal.
     text = re.sub(r"\s*°\s*", "°", text)
@@ -69,18 +73,50 @@ def verify_quote(
         return VerificationResult(False, MatchMethod.NONE, 0.0, "cited page does not exist")
 
     q = normalize_text(quote).strip(" .\"'…")
-    page = normalize_text(page_text)
     if len(q) < MIN_QUOTE_LENGTH:
         return VerificationResult(False, MatchMethod.NONE, 0.0, "quote too short to verify")
-    if q in page:
+    variants = {normalize_text(page_text), normalize_text(page_text, keep_linebreak_hyphens=True)}
+    if any(q in page for page in variants):
         return VerificationResult(True, MatchMethod.EXACT, 100.0)
 
-    score = float(fuzz.partial_ratio(q, page))
-    if score >= threshold:
-        return VerificationResult(True, MatchMethod.FUZZY, score)
+    best_score = 0.0
+    for page in variants:
+        alignment = fuzz.partial_ratio_alignment(q, page)
+        if alignment is None:
+            continue
+        score = float(alignment.score)
+        best_score = max(best_score, score)
+        if score < threshold:
+            continue
+        segment = _expand_to_words(page, alignment.dest_start, alignment.dest_end)
+        if _numbers(q) == _numbers(segment):
+            return VerificationResult(True, MatchMethod.FUZZY, score)
+        return VerificationResult(
+            False,
+            MatchMethod.NONE,
+            score,
+            "quote text matches the page but its numbers differ from the page",
+        )
     return VerificationResult(
         False,
         MatchMethod.NONE,
-        score,
-        f"quote not found on cited page (best fuzzy score {score:.0f} < {threshold:.0f})",
+        best_score,
+        f"quote not found on cited page (best fuzzy score {best_score:.0f} < {threshold:.0f})",
     )
+
+
+_DIGITS_RE = re.compile(r"\d+(?:[.,]\d+)*")
+
+
+def _numbers(text: str) -> list[str]:
+    """Numeric tokens; fuzzy matching may tolerate typos in words but never in numbers."""
+    return _DIGITS_RE.findall(text)
+
+
+def _expand_to_words(text: str, start: int, end: int) -> str:
+    """Grow an aligned slice so it does not cut a word or number in half."""
+    while start > 0 and text[start - 1].isalnum():
+        start -= 1
+    while end < len(text) and text[end].isalnum():
+        end += 1
+    return text[start:end]
