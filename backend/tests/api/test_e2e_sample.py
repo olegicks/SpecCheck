@@ -13,7 +13,7 @@ EXPECTED = {
     "REQ-002": ("PASS", "2.7 V … 5.5 V"),  # given in mV
     "REQ-003": ("PASS", "400 MHz"),
     "REQ-004": ("PASS", "4 MB"),  # 4096 KB == 4 MB (JEDEC)
-    "REQ-005": ("UNCLEAR", "1"),  # variant dependent -> low confidence
+    "REQ-005": ("UNCLEAR", "1 MB"),  # variant dependent -> low confidence
     "REQ-006": ("FAIL", "3"),  # only 3 CAN FD controllers
     "REQ-007": ("PASS", "1"),
     "REQ-008": ("PASS", "present"),  # only in a footnote

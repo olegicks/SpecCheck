@@ -64,6 +64,11 @@ def _unclear(reason: str, found: str | None = None) -> Decision:
     return Decision(Status.UNCLEAR, reason, found)
 
 
+def _raw(finding: Finding) -> str:
+    """The value as the agent reported it, with its unit (for UNCLEAR results)."""
+    return f"{finding.value} {finding.unit or ''}".strip()
+
+
 def _finding_unit(finding: Finding) -> str | None:
     """Unit from the explicit field, or the first known unit inside the value string."""
     if finding.unit and finding.unit.strip():
@@ -105,9 +110,9 @@ def _decide_numeric(requirement: Requirement, finding: Finding) -> Decision:
 
     unit = _finding_unit(finding)
     if unit is None:
-        return _unclear("Extracted value has no unit", str(finding.value))
+        return _unclear("Extracted value has no unit", _raw(finding))
     if not is_known_unit(unit):
-        return _unclear(f"Unknown unit '{unit}' in extracted value", str(finding.value))
+        return _unclear(f"Unknown unit '{unit}' in extracted value", _raw(finding))
     spec = lookup_unit(unit)
     if spec.dimension is not req_spec.dimension:
         return _unclear(
@@ -120,7 +125,7 @@ def _decide_numeric(requirement: Requirement, finding: Finding) -> Decision:
     expected = 2 if requirement.type is RequirementType.RANGE else 1
     if len(raw) != expected:
         what = "a min and max value" if expected == 2 else "exactly one value"
-        return _unclear(f"Ambiguous value: expected {what}, got {len(raw)}", str(finding.value))
+        return _unclear(f"Ambiguous value: expected {what}, got {len(raw)}", _raw(finding))
 
     base = [spec.to_base(v) for v in raw]
     dim = spec.dimension
@@ -219,11 +224,11 @@ def decide(
         return _unclear(f"No value found in the datasheet{note}")
     if verification is None or not verification.verified:
         why = verification.reason if verification else "not verified"
-        return _unclear(f"Quote verification failed ({why})", str(finding.value))
+        return _unclear(f"Quote verification failed ({why})", _raw(finding))
     if finding.confidence < min_confidence:
         return _unclear(
             f"Low confidence {finding.confidence:.2f} < {min_confidence:.2f} — needs review",
-            str(finding.value),
+            _raw(finding),
         )
     try:
         match requirement.type:
@@ -234,4 +239,4 @@ def decide(
             case _:
                 return _decide_numeric(requirement, finding)
     except UnitError as exc:
-        return _unclear(f"Could not parse value: {exc}", str(finding.value))
+        return _unclear(f"Could not parse value: {exc}", _raw(finding))
