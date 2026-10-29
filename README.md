@@ -308,7 +308,7 @@ CI (GitHub Actions) runs linting, the backend tests with both coverage gates, an
 - **Complex tables** come out as plain text; merged cells or rotated headers can confuse extraction. Quote verification limits the damage, but some of these results end up UNCLEAR.
 - Conditional specs ("125 °C at reduced frequency") rely on the model's notes and confidence. The rule engine does not model conditions.
 - State is in memory: one process, no persistence or authentication.
-- The live agent is non-deterministic. The rule engine is deterministic, but what gets extracted can vary between runs.
+- The live agent is non-deterministic. The rule engine is deterministic, but what gets extracted can vary between runs. On the sample datasheet, `gpt-4o-mini` reproduces the expected statuses in most runs (about 14k tokens per run). The typical deviation is an overly cautious confidence that turns a FAIL into UNCLEAR, which is the safe direction because it asks for review rather than giving a wrong verdict.
 
 ## 🗺 Roadmap
 

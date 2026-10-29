@@ -90,6 +90,20 @@ def test_quote_in_other_unit_still_supports_value() -> None:
     assert d.status is Status.PASS
 
 
+def test_table_row_unit_in_last_column_supports_converted_value() -> None:
+    r = req("range", min=3.0, max=5.5, unit="V")
+    quote = "VDDIO I/O supply voltage 2700 3300 5500 mV"
+    assert decide(r, finding("2.7 to 5.5", "V", quote), OK).status is Status.PASS
+    assert decide(r, finding("2700 to 5500", "mV", quote), OK).status is Status.PASS
+    assert decide(r, finding("2.8 to 5.5", "V", quote), OK).status is Status.UNCLEAR
+
+
+def test_variant_dependent_values_are_ambiguous() -> None:
+    r = req("min", min=1, unit="MB")
+    d = decide(r, finding("512 KB or 1024 KB", None, "SC-MCU-100A 512 KB, SC-MCU-100B 1024 KB"), OK)
+    assert d.status is Status.UNCLEAR and "Ambiguous" in d.reason
+
+
 def test_table_quote_with_unit_in_header_supports_bare_number() -> None:
     d = decide(TEMP, finding("-40 to 125", "°C", "TA Ambient temperature -40 125"), OK)
     assert d.status is Status.PASS
@@ -221,3 +235,8 @@ def test_confidence_threshold_is_configurable() -> None:
 def test_decide_is_deterministic() -> None:
     f = finding("-40 to 125", "°C", "TA -40 … +125 °C")
     assert {decide(TEMP, f, OK) for _ in range(5)} == {decide(TEMP, f, OK)}
+
+
+@pytest.mark.parametrize("unit", ["null", "None", "", " n/a "])
+def test_null_like_units_are_normalised(unit: str) -> None:
+    assert finding(3, unit, "3 CAN FD controllers").unit is None

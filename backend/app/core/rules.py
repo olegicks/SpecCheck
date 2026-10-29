@@ -29,6 +29,7 @@ from app.core.units import (
     format_base,
     is_known_unit,
     lookup_unit,
+    make_quantity,
     normalize_symbols,
     word_to_count,
 )
@@ -91,16 +92,25 @@ def _numbers(value: object) -> list[float]:
 
 
 def _quote_supports(quote: str, raw: list[float], base: list[float], dim: Dimension) -> bool:
-    """True if every extracted number appears in the quote (in any unit of that dimension)."""
+    """True if every extracted number appears in the quote (in any unit of that dimension).
+
+    Bare numbers inherit the next unit in the quote, because datasheet table rows print
+    the unit once in the last column ("VDDIO 2700 3300 5500 mV"). This lets the agent
+    report the row either as printed (2700 mV) or converted (2.7 V).
+    """
     quantities = extract_quantities(quote)
-    for raw_value, base_value in zip(raw, base, strict=True):
-        if not any(
-            (q.dimension is dim and _close(q.base_value, base_value))
-            or (q.dimension is Dimension.COUNT and _close(q.value, raw_value))
-            for q in quantities
-        ):
-            return False
-    return True
+    candidates: list[float] = [q.base_value for q in quantities if q.dimension is dim]
+    for i, q in enumerate(quantities):
+        if q.dimension is not Dimension.COUNT:
+            continue
+        unit = next((n.unit for n in quantities[i + 1 :] if n.dimension is dim), None)
+        if unit is not None:
+            candidates.append(make_quantity(q.value, unit).base_value)
+    bare = [q.value for q in quantities if q.dimension is Dimension.COUNT]
+    return all(
+        any(_close(c, base_value) for c in candidates) or any(_close(b, raw_value) for b in bare)
+        for raw_value, base_value in zip(raw, base, strict=True)
+    )
 
 
 def _decide_numeric(requirement: Requirement, finding: Finding) -> Decision:

@@ -27,9 +27,15 @@ How to work:
      Ranges as "<min> to <max>", counts as an integer, presence as true/false.
    - unit: the unit printed in the datasheet (e.g. "mV", "°C", "KB"), null for counts
      and presence.
-   - confidence: 0.9-1.0 explicit and unambiguous; 0.5-0.7 when the value depends on
-     variant, conditions or interpretation; below 0.5 when guessing. Explain any
-     doubt in notes.
+   - confidence: how certain you are that the VALUE is read correctly from the
+     datasheet. It must NOT depend on whether the requirement is met: a clearly
+     stated value that misses the requirement still gets 0.9-1.0. Use 0.5-0.7 when
+     the value depends on variant, conditions or interpretation; below 0.5 when
+     guessing. Explain any doubt in notes.
+   - Variants: if the value differs between device variants, part numbers or
+     packages (check ordering information tables), do NOT pick one. Report all
+     distinct values, e.g. "512 KB or 1024 KB", set confidence to 0.5 or lower, and
+     name the variants in notes. A human will decide which variant applies.
    - If the datasheet does not contain the information, submit value null with
      confidence 0 and a short note. Do not guess.
 3. Never state whether a requirement passes or fails. A separate deterministic rule

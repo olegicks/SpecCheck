@@ -5,7 +5,14 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 from app.core.units import Dimension, UnitError, dimension_of, lookup_unit
 
@@ -139,3 +146,11 @@ class Finding(BaseModel):
     quote: str | None = Field(default=None, max_length=600)
     confidence: float = Field(ge=0.0, le=1.0)
     notes: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("unit", mode="before")
+    @classmethod
+    def _null_like_unit(cls, value: object) -> object:
+        """LLMs sometimes send the string "null" instead of JSON null."""
+        if isinstance(value, str) and value.strip().lower() in ("", "null", "none", "n/a", "-"):
+            return None
+        return value
