@@ -1,8 +1,10 @@
-# Render blueprint for the backend API. Set OPENAI_API_KEY in the Render dashboard (never in this file).
+# Render blueprint for the backend API.
+# Secrets (sync: false) are entered in the Render dashboard, never committed.
 services:
   - type: web
     name: speccheck-api
     runtime: docker
+    plan: free
     rootDir: backend
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
@@ -11,5 +13,16 @@ services:
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4o-mini
+      # Your production frontend URL, e.g. https://speccheck.vercel.app
       - key: SPECCHECK_CORS_ORIGINS
         sync: false
+      # Also allow Vercel preview deployments of the project
+      - key: SPECCHECK_CORS_ORIGIN_REGEX
+        value: ^https://speccheck(-[a-z0-9-]+)?\.vercel\.app$
+      # Shared access code required to run checks and upload PDFs (protects your OpenAI budget)
+      - key: SPECCHECK_ACCESS_TOKEN
+        sync: false
+      - key: SPECCHECK_RATE_LIMIT_CHECKS
+        value: 5/minute
+      - key: SPECCHECK_MAX_CONCURRENT_RUNS
+        value: "2"

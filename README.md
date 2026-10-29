@@ -261,7 +261,7 @@ The frontend runs at http://localhost:8080 (nginx, SSE-aware proxy) and the API 
 ```bash
 # backend (from backend/)
 ruff check . && ruff format --check .
-pytest --cov=app                                                       # 250 tests, ~96 % coverage
+pytest --cov=app                                                       # 262 tests, ~96 % coverage
 coverage report --include="app/core/*,app/agent/*" --fail-under=85      # core gate used in CI
 
 # frontend (from frontend/)
@@ -291,8 +291,30 @@ CI (GitHub Actions) runs linting, the backend tests with both coverage gates, an
 
 ## ☁️ Deployment
 
-- **Backend → Render:** `render.yaml` is a Docker-based blueprint. Set `OPENAI_API_KEY` and `SPECCHECK_CORS_ORIGINS` (your Vercel URL) as secrets in the dashboard.
-- **Frontend → Vercel:** set the project root to `frontend/` and the environment variable `VITE_API_URL=https://<your-render-app>.onrender.com`.
+**1. Backend → Render** (Docker blueprint in `render.yaml`)
+
+1. Render dashboard → **New → Blueprint** → select this repository.
+2. Fill in the secret variables:
+
+   | Variable | Value |
+   |---|---|
+   | `OPENAI_API_KEY` | a key dedicated to this deployment, with a **monthly usage limit** set in the OpenAI project |
+   | `SPECCHECK_CORS_ORIGINS` | your Vercel URL, e.g. `https://speccheck.vercel.app` |
+   | `SPECCHECK_ACCESS_TOKEN` | a shared access code; only people who have it can run checks or upload PDFs |
+
+   `SPECCHECK_CORS_ORIGIN_REGEX` already allows Vercel preview deployments (`speccheck-*.vercel.app`). Adjust it if your Vercel project has a different name.
+3. Check that `https://<app>.onrender.com/health` returns `"mode": "live"`.
+
+**2. Frontend → Vercel**
+
+1. **Add New → Project** → this repository, with **Root Directory** set to `frontend`.
+2. Environment variable: `VITE_API_URL=https://<app>.onrender.com`. It is baked in at build time, so redeploy after changing it.
+
+**Production behaviour**
+
+- **Cost protection.** With `SPECCHECK_ACCESS_TOKEN` set, starting checks and uploading PDFs require the access code, which the UI asks for. Reading results stays public. Per-IP rate limits, a concurrency cap and per-run budgets limit spending further.
+- **Real client IPs.** The container trusts the platform proxy's `X-Forwarded-For` (`--forwarded-allow-ips`), so rate limits apply per client instead of to everyone at once.
+- **Free tier.** The service sleeps after about 15 minutes idle, so the first request takes roughly 30–60 s. Uploads and results are kept in memory and are lost when it sleeps or redeploys.
 
 ## 🔐 Security notes
 

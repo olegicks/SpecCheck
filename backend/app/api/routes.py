@@ -2,10 +2,21 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, File, HTTPException, Query, Request, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from slowapi import Limiter
@@ -53,6 +64,15 @@ def build_router(
     router = APIRouter()
     max_bytes = settings.max_upload_mb * 1024 * 1024
 
+    def require_access(request: Request) -> None:
+        """Protect endpoints that spend LLM budget when SPECCHECK_ACCESS_TOKEN is set."""
+        if settings.access_token is None:
+            return
+        given = request.headers.get("x-access-token", "")
+        expected = settings.access_token.get_secret_value()
+        if not hmac.compare_digest(given.encode(), expected.encode()):
+            raise HTTPException(401, "A valid access code is required to run checks.")
+
     def get_run(check_id: str) -> CheckRun:
         try:
             return service.get(check_id)
@@ -68,6 +88,7 @@ def build_router(
             "version": __version__,
             "mode": settings.llm_mode.value,
             "model": settings.openai_model if settings.llm_mode.value == "live" else "offline-demo",
+            "auth_required": settings.auth_required,
         }
 
     @router.get("/api/templates")
@@ -110,7 +131,11 @@ def build_router(
             }
         ]
 
-    @router.post("/api/datasheets", status_code=status.HTTP_201_CREATED)
+    @router.post(
+        "/api/datasheets",
+        status_code=status.HTTP_201_CREATED,
+        dependencies=[Depends(require_access)],
+    )
     @limiter.limit(lambda: settings.rate_limit_uploads)
     async def upload_datasheet(request: Request, file: Annotated[UploadFile, File()]) -> dict:
         declared = request.headers.get("content-length")
@@ -153,7 +178,11 @@ def build_router(
 
     # -- checks ------------------------------------------------------------------------------
 
-    @router.post("/api/checks", status_code=status.HTTP_202_ACCEPTED)
+    @router.post(
+        "/api/checks",
+        status_code=status.HTTP_202_ACCEPTED,
+        dependencies=[Depends(require_access)],
+    )
     @limiter.limit(lambda: settings.rate_limit_checks)
     async def start_check(request: Request, body: CheckRequest) -> CheckRun:
         ids = [r.id for r in body.requirements]

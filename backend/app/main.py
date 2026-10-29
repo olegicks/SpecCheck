@@ -101,6 +101,7 @@ def create_app(settings: Settings | None = None, llm_factory: LLMFactory | None 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
+        allow_origin_regex=settings.cors_origin_regex,
         allow_methods=["GET", "POST", "PATCH", "DELETE"],
         allow_headers=["*"],
     )

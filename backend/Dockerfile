@@ -14,7 +14,8 @@ RUN pip install . && useradd --create-home --uid 10001 speccheck
 USER speccheck
 
 EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://localhost:{os.environ.get(\"PORT\", \"8000\")}/health')"
 # Secrets come from the environment at runtime (docker compose env_file / platform secrets),
-# never from the image.
-CMD ["sh", "-c", "uvicorn app.asgi:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"]
+# never from the image. --forwarded-allow-ips trusts the platform's reverse proxy so rate
+# limiting sees the real client IP (the container is only reachable through that proxy).
+CMD ["sh", "-c", "uvicorn app.asgi:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]

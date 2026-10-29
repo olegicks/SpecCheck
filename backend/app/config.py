@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     cors_origins: list[str] | str = Field(
         default=["http://localhost:5173"], alias="SPECCHECK_CORS_ORIGINS"
     )
+    # e.g. ^https://speccheck(-[a-z0-9-]+)?\.vercel\.app$ to also allow Vercel preview deployments
+    cors_origin_regex: str | None = Field(default=None, alias="SPECCHECK_CORS_ORIGIN_REGEX")
+    # Optional shared access code protecting the endpoints that cost money (runs, uploads).
+    access_token: SecretStr | None = Field(default=None, alias="SPECCHECK_ACCESS_TOKEN")
 
     max_upload_mb: int = Field(default=10, alias="SPECCHECK_MAX_UPLOAD_MB")
     max_pdf_pages: int = Field(default=80, alias="SPECCHECK_MAX_PDF_PAGES")
@@ -62,12 +66,16 @@ class Settings(BaseSettings):
             return [o.strip() for o in value.split(",") if o.strip()]
         return value
 
-    @field_validator("openai_api_key", mode="before")
+    @field_validator("openai_api_key", "access_token", "cors_origin_regex", mode="before")
     @classmethod
-    def _blank_key_is_none(cls, value: object) -> object:
+    def _blank_is_none(cls, value: object) -> object:
         if isinstance(value, str) and (not value.strip() or value.strip() == "sk-your-key-here"):
             return None
         return value
+
+    @property
+    def auth_required(self) -> bool:
+        return self.access_token is not None
 
     @property
     def llm_mode(self) -> LLMMode:
@@ -78,7 +86,8 @@ class Settings(BaseSettings):
     @property
     def secret_values(self) -> list[str]:
         """Secrets that must never appear in logs or responses."""
-        return [self.openai_api_key.get_secret_value()] if self.openai_api_key else []
+        secrets = [self.openai_api_key, self.access_token]
+        return [s.get_secret_value() for s in secrets if s is not None]
 
 
 def load_settings(**overrides: object) -> Settings:

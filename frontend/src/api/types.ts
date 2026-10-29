@@ -32,6 +32,7 @@ export interface Health {
   version: string
   mode: 'live' | 'offline'
   model: string
+  auth_required?: boolean
 }
 
 export interface DatasheetSummary {
