@@ -19,9 +19,6 @@ services:
       # Also allow Vercel preview deployments of the project
       - key: SPECCHECK_CORS_ORIGIN_REGEX
         value: ^https://speccheck(-[a-z0-9-]+)?\.vercel\.app$
-      # Shared access code required to run checks and upload PDFs (protects your OpenAI budget)
-      - key: SPECCHECK_ACCESS_TOKEN
-        sync: false
       - key: SPECCHECK_RATE_LIMIT_CHECKS
         value: 5/minute
       - key: SPECCHECK_MAX_CONCURRENT_RUNS

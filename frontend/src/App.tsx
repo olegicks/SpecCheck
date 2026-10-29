@@ -1,6 +1,6 @@
 import { Info, Play, ShieldCheck } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api, getAccessToken, setAccessToken } from './api/client'
+import { api } from './api/client'
 import type { DatasheetSummary, Health, Requirement, RequirementResult, Template } from './api/types'
 import { Header } from './components/Header'
 import { Button, ErrorBanner } from './components/ui'
@@ -23,7 +23,6 @@ export default function App() {
   const [datasheet, setDatasheet] = useState<DatasheetSummary | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [accessCode, setAccessCode] = useState(getAccessToken)
   const check = useCheckRun()
 
   useEffect(() => {
@@ -48,8 +47,7 @@ export default function App() {
   }, [])
 
   const invalid = useMemo(() => hasErrors(validateRequirements(requirements)), [requirements])
-  const needsCode = !!health?.auth_required && !accessCode.trim()
-  const canRun = !check.running && !invalid && requirements.length > 0 && datasheet !== null && !needsCode
+  const canRun = !check.running && !invalid && requirements.length > 0 && datasheet !== null
 
   const disabledReason = check.running
     ? 'A check is running'
@@ -59,9 +57,7 @@ export default function App() {
         ? 'Fix the highlighted requirement errors'
         : !datasheet
           ? 'Select a datasheet'
-          : needsCode
-            ? 'Enter the access code for this deployment'
-            : null
+          : null
 
   const run = () => {
     if (!datasheet) return
@@ -117,26 +113,6 @@ export default function App() {
               {disabledReason ?? 'Cost is capped per run (max steps, pages and tokens).'}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {health?.auth_required && (
-              <div>
-                <label htmlFor="access-code" className="sr-only">
-                  Access code
-                </label>
-                <input
-                  id="access-code"
-                  type="password"
-                  autoComplete="off"
-                  className="input h-11 w-44"
-                  placeholder="Access code"
-                  value={accessCode}
-                  onChange={(e) => {
-                    setAccessCode(e.target.value)
-                    setAccessToken(e.target.value)
-                  }}
-                />
-              </div>
-            )}
           <Button
             variant="primary"
             size="lg"
@@ -148,7 +124,6 @@ export default function App() {
           >
             {check.running ? 'Agent running…' : 'Run check'}
           </Button>
-          </div>
         </div>
         {check.error && <ErrorBanner title="Check failed" messages={[check.error]} onDismiss={check.clearError} />}
 

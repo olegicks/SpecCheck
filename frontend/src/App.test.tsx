@@ -69,30 +69,6 @@ describe('App flow', () => {
     expect(await screen.findAllByText('Cannot reach the SpecCheck backend. Is it running?')).not.toHaveLength(0)
   })
 
-  it('asks for an access code when the deployment requires one and sends it', async () => {
-    let sentToken: string | null = null
-    server.use(
-      http.get('/health', () =>
-        HttpResponse.json({ status: 'ok', version: '1', mode: 'live', model: 'gpt-4o-mini', auth_required: true }),
-      ),
-      http.post('/api/checks', ({ request }) => {
-        sentToken = request.headers.get('X-Access-Token')
-        return HttpResponse.json({ detail: 'A valid access code is required to run checks.' }, { status: 401 })
-      }),
-    )
-    const user = userEvent.setup()
-    render(<App />)
-    const code = await screen.findByLabelText('Access code')
-    expect(screen.getByRole('button', { name: 'Run check' })).toBeDisabled()
-    expect(screen.getByText('Enter the access code for this deployment')).toBeInTheDocument()
-
-    await user.type(code, 'wrong-code')
-    await user.click(screen.getByRole('button', { name: 'Run check' }))
-    expect(sentToken).toBe('wrong-code')
-    expect(await screen.findByText('A valid access code is required to run checks.')).toBeInTheDocument()
-    await user.clear(code)
-  })
-
   it('toggles dark mode', async () => {
     const user = userEvent.setup()
     render(<App />)

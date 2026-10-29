@@ -12,33 +12,6 @@ import type {
 
 export const API_BASE: string = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
 
-const TOKEN_KEY = 'speccheck-access-code'
-
-function readStoredToken(): string {
-  try {
-    return localStorage.getItem(TOKEN_KEY) ?? ''
-  } catch {
-    return ''
-  }
-}
-
-let accessToken = readStoredToken()
-
-/** Shared access code for deployments that protect runs/uploads (sent as X-Access-Token). */
-export function getAccessToken(): string {
-  return accessToken
-}
-
-export function setAccessToken(token: string) {
-  accessToken = token.trim()
-  try {
-    if (accessToken) localStorage.setItem(TOKEN_KEY, accessToken)
-    else localStorage.removeItem(TOKEN_KEY)
-  } catch {
-    /* storage unavailable */
-  }
-}
-
 export class ApiError extends Error {
   readonly status: number
   readonly details: string[]
@@ -67,16 +40,13 @@ function parseError(status: number, body: unknown): ApiError {
     return new ApiError(status, errors[0] ?? 'Invalid input', errors)
   }
   if (status === 429) return new ApiError(status, 'Too many requests — please wait a moment.')
-  if (status === 401) return new ApiError(status, 'A valid access code is required.')
   return new ApiError(status, `Request failed (${status})`)
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response
   try {
-    const headers = new Headers(init?.headers)
-    if (accessToken) headers.set('X-Access-Token', accessToken)
-    response = await fetch(`${API_BASE}${path}`, { ...init, headers })
+    response = await fetch(`${API_BASE}${path}`, init)
   } catch {
     throw new ApiError(0, 'Cannot reach the SpecCheck backend. Is it running?')
   }
