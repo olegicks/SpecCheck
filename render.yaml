@@ -1,0 +1,15 @@
+# Render blueprint for the backend API. Set OPENAI_API_KEY in the Render dashboard (never in this file).
+services:
+  - type: web
+    name: speccheck-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: SPECCHECK_CORS_ORIGINS
+        sync: false

@@ -1,0 +1,18 @@
+services:
+  backend:
+    build: ./backend
+    # Reads OPENAI_API_KEY etc. from your local .env (optional: without it the app runs in offline demo mode).
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SPECCHECK_CORS_ORIGINS: http://localhost:8080
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"

@@ -91,7 +91,7 @@ export function ResultsTable({ results, onSelect }: { results: RequirementResult
                   {r.requirement.priority === 'should' && <span className="ml-2 font-sans text-slate-400">(should)</span>}
                 </p>
               </td>
-              <td className="px-2 py-3 font-mono text-xs text-slate-700 dark:text-slate-300">
+              <td className="px-2 py-3 font-mono text-xs whitespace-nowrap text-slate-700 dark:text-slate-300">
                 {r.found_display ?? <span className="text-slate-400">—</span>}
               </td>
               <td className="px-2 py-3 text-slate-600 tabular-nums dark:text-slate-400">{r.finding?.page ?? '—'}</td>
