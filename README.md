@@ -301,7 +301,7 @@ CI (GitHub Actions) runs linting, the backend tests with both coverage gates, an
    | `OPENAI_API_KEY` | a key dedicated to this deployment, with a **monthly usage limit** set in the OpenAI project |
    | `SPECCHECK_CORS_ORIGINS` | your Vercel URL, e.g. `https://speccheck.vercel.app` |
 
-   `SPECCHECK_CORS_ORIGIN_REGEX` already allows Vercel preview deployments (`speccheck-*.vercel.app`). Adjust it if your Vercel project has a different name.
+   `SPECCHECK_CORS_ORIGIN_REGEX` already allows every `*.vercel.app` deployment, including previews.
 3. Check that `https://<app>.onrender.com/health` returns `"mode": "live"`.
 
 **2. Frontend → Vercel**

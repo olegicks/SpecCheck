@@ -16,9 +16,10 @@ services:
       # Your production frontend URL, e.g. https://speccheck.vercel.app
       - key: SPECCHECK_CORS_ORIGINS
         sync: false
-      # Also allow Vercel preview deployments of the project
+      # Allow any Vercel deployment (production + previews). The API is public and uses no
+      # cookies, so CORS is not a security boundary here; rate limits protect the budget.
       - key: SPECCHECK_CORS_ORIGIN_REGEX
-        value: ^https://speccheck(-[a-z0-9-]+)?\.vercel\.app$
+        value: ^https://[a-z0-9-]+\.vercel\.app$
       - key: SPECCHECK_RATE_LIMIT_CHECKS
         value: 5/minute
       - key: SPECCHECK_MAX_CONCURRENT_RUNS
