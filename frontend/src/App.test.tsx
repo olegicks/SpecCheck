@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import App from './App'
-import { ModeBadge } from './components/Header'
+import { withRetry } from './api/client'
 import { DatasheetPicker } from './features/datasheet/DatasheetPicker'
 import { AgentTimeline } from './features/timeline/AgentTimeline'
 import { events, sample } from './mocks/fixtures'
@@ -13,8 +13,7 @@ describe('App flow', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    expect(await screen.findByText('Offline demo')).toBeInTheDocument()
-    expect(screen.getByText(/Offline demo mode\./)).toBeInTheDocument()
+    expect(await screen.findByText(/Offline demo mode\./)).toBeInTheDocument()
     const run = await screen.findByRole('button', { name: 'Run check' })
     await waitFor(() => expect(run).toBeEnabled())
 
@@ -58,15 +57,16 @@ describe('App flow', () => {
     expect(await screen.findByText('Too many requests')).toBeInTheDocument()
   })
 
-  it('shows a friendly error when the backend is unreachable', async () => {
+  it('never shows a scary backend-down message while the server wakes up', async () => {
     server.use(
       http.get('/health', () => HttpResponse.error()),
       http.get('/api/templates', () => HttpResponse.error()),
       http.get('/api/samples', () => HttpResponse.error()),
     )
-    render(<App />)
-    expect(await screen.findByText('Backend offline')).toBeInTheDocument()
-    expect(await screen.findAllByText('Cannot reach the SpecCheck backend. Is it running?')).not.toHaveLength(0)
+    render(<App retryDelays={[]} />)
+    expect(await screen.findByText(/demo server is still starting/)).toBeInTheDocument()
+    expect(screen.queryByText(/offline/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Cannot reach/)).not.toBeInTheDocument()
   })
 
   it('toggles dark mode', async () => {
@@ -79,10 +79,27 @@ describe('App flow', () => {
   })
 })
 
-describe('ModeBadge', () => {
-  it('shows the live model', () => {
-    render(<ModeBadge health={{ status: 'ok', version: '1', mode: 'live', model: 'gpt-4o-mini' }} error={false} />)
-    expect(screen.getByText('Live LLM · gpt-4o-mini')).toBeInTheDocument()
+describe('withRetry', () => {
+  it('retries network errors until the server is awake', async () => {
+    let calls = 0
+    const fn = () => (++calls < 3 ? Promise.reject(new TypeError('network')) : Promise.resolve('ok'))
+    await expect(withRetry(fn, [0, 0, 0])).resolves.toBe('ok')
+    expect(calls).toBe(3)
+  })
+
+  it('does not retry client errors', async () => {
+    const { ApiError } = await import('./api/client')
+    let calls = 0
+    const fn = () => {
+      calls++
+      return Promise.reject(new ApiError(422, 'bad input'))
+    }
+    await expect(withRetry(fn, [0, 0])).rejects.toThrow('bad input')
+    expect(calls).toBe(1)
+  })
+
+  it('gives up after the last delay', async () => {
+    await expect(withRetry(() => Promise.reject(new TypeError('down')), [0])).rejects.toThrow('down')
   })
 })
 

@@ -127,3 +127,23 @@ export function subscribeToEvents(
   }
   return () => source.close()
 }
+
+/**
+ * Retry a request while the backend wakes up (free hosting sleeps when idle and the
+ * first requests can fail or time out). Default schedule covers roughly 90 seconds.
+ */
+export const WAKE_UP_DELAYS_MS = [2000, 3000, 5000, 8000, 10000, 15000, 20000, 25000]
+
+export async function withRetry<T>(fn: () => Promise<T>, delays: number[] = WAKE_UP_DELAYS_MS): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      // Only network errors and 5xx are worth retrying; 4xx means the request is wrong.
+      const retryable = !(error instanceof ApiError) || error.status === 0 || error.status >= 500
+      const delay = delays[attempt]
+      if (!retryable || delay === undefined) throw error
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+  }
+}

@@ -1,5 +1,4 @@
 import { Moon, Sun } from 'lucide-react'
-import type { Health } from '../api/types'
 
 export const GITHUB_URL = 'https://github.com/olegicks/SpecCheck'
 
@@ -11,45 +10,10 @@ function GithubMark() {
   )
 }
 
-export function ModeBadge({ health, error }: { health: Health | null; error: boolean }) {
-  if (error) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-600/20 ring-inset dark:bg-rose-500/10 dark:text-rose-300">
-        <span className="size-1.5 rounded-full bg-rose-500" aria-hidden />
-        Backend offline
-      </span>
-    )
-  }
-  if (!health) {
-    return <span className="h-6 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800" aria-label="Loading mode" />
-  }
-  const live = health.mode === 'live'
-  return (
-    <span
-      title={live ? `Live OpenAI agent (${health.model})` : 'No API key configured: scripted offline demo'}
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
-        live
-          ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-300'
-          : 'bg-amber-50 text-amber-800 ring-amber-600/25 dark:bg-amber-500/10 dark:text-amber-300'
-      }`}
-    >
-      <span className="relative flex size-1.5" aria-hidden>
-        {live && <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />}
-        <span className={`relative inline-flex size-1.5 rounded-full ${live ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-      </span>
-      {live ? `Live LLM · ${health.model}` : 'Offline demo'}
-    </span>
-  )
-}
-
 export function Header({
-  health,
-  healthError,
   dark,
   onToggleTheme,
 }: {
-  health: Health | null
-  healthError: boolean
   dark: boolean
   onToggleTheme: () => void
 }) {
@@ -66,7 +30,6 @@ export function Header({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <ModeBadge health={health} error={healthError} />
           <button
             type="button"
             onClick={onToggleTheme}

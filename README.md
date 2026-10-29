@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="frontend/public/favicon.svg" width="72" alt="SpecCheck logo" />
+<img src="docs/logo.svg" width="96" alt="SpecCheck logo" />
 
 # SpecCheck
 
@@ -8,6 +8,11 @@
 
 *The LLM finds and extracts. Python decides. A human reviews.*
 
+### [🚀 Try the live demo → spec-check-sigma.vercel.app](https://spec-check-sigma.vercel.app/)
+
+<sub>Runs the real OpenAI agent on the built-in sample datasheet or your own PDF. Free hosting sleeps when idle, so the first load can take up to a minute.</sub>
+
+[![Live demo](https://img.shields.io/badge/demo-live-4f46e5?logo=vercel&logoColor=white)](https://spec-check-sigma.vercel.app/)
 [![CI](https://github.com/olegicks/SpecCheck/actions/workflows/ci.yml/badge.svg)](https://github.com/olegicks/SpecCheck/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
@@ -17,7 +22,7 @@
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white)
 ![Coverage](https://img.shields.io/badge/backend%20coverage-96%25-brightgreen)
 
-[Problem](#-the-problem) · [Screenshots](#-screenshots) · [Architecture](#-architecture) · [How the agent works](#-how-the-agent-works) · [Design decisions](#-design-decisions) · [Run locally](#-run-locally) · [Tests](#-tests) · [Security](#-security-notes)
+[Live demo](https://spec-check-sigma.vercel.app/) · [Problem](#-the-problem) · [Screenshots](#-screenshots) · [Architecture](#-architecture) · [How the agent works](#-how-the-agent-works) · [Design decisions](#-design-decisions) · [Run locally](#-run-locally) · [Tests](#-tests) · [Security](#-security-notes)
 
 </div>
 
@@ -39,6 +44,8 @@ This work is slow and error-prone. Values hide in tables, are given in mV instea
 
 ## 📸 Screenshots
 
+Captured from a real run of the live `gpt-4o-mini` agent.
+
 <table>
 <tr>
 <td width="50%">
@@ -50,7 +57,7 @@ This work is slow and error-prone. Values hide in tables, are given in mV instea
 </td>
 <td width="50%">
 
-**Evidence drawer** (dark mode). The rendered PDF page with the quote highlighted, the verification status, the agent's reasoning and the human override form.
+**Evidence drawer** (dark mode). The agent noticed that SRAM differs between variants, so the result is UNCLEAR. The drawer shows the rendered PDF page with the quote highlighted, the verification status, the agent's reasoning and the human override form.
 
 <img src="docs/screenshots/detail-drawer.png" alt="Detail drawer with highlighted datasheet page and verified quote" />
 
@@ -70,7 +77,7 @@ This work is slow and error-prone. Values hide in tables, are given in mV instea
 | 📡 **Live timeline** | Server-Sent Events with replay and `Last-Event-ID` resume, so every search, page read, extraction and verification appears as it happens. |
 | 🧑‍🔧 **Human in the loop** | Overrides require a comment. The original agent result is kept and appears in every export. |
 | 📤 **Exports** | Markdown, CSV, JSON and Excel (with protection against formula injection). |
-| 🌗 **Polished UI** | Light and dark mode, a *Live LLM / Offline demo* badge, skeleton loaders, empty states, keyboard access and ARIA labels. |
+| 🌗 **Polished UI** | Light and dark mode, a quiet wake-up notice instead of errors while the free backend starts, skeleton loaders, empty states, keyboard access and ARIA labels. |
 
 ## 🏗 Architecture
 

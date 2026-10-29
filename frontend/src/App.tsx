@@ -1,6 +1,6 @@
-import { Info, Play, ShieldCheck } from 'lucide-react'
+import { Info, Loader2, Play, ShieldCheck } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api } from './api/client'
+import { WAKE_UP_DELAYS_MS, api, withRetry } from './api/client'
 import type { DatasheetSummary, Health, Requirement, RequirementResult, Template } from './api/types'
 import { Header } from './components/Header'
 import { Button, ErrorBanner } from './components/ui'
@@ -13,10 +13,11 @@ import { AgentTimeline } from './features/timeline/AgentTimeline'
 import { useCheckRun } from './hooks/useCheckRun'
 import { useTheme } from './hooks/useTheme'
 
-export default function App() {
+export default function App({ retryDelays = WAKE_UP_DELAYS_MS }: { retryDelays?: number[] }) {
   const { dark, toggle } = useTheme()
   const [health, setHealth] = useState<Health | null>(null)
-  const [healthError, setHealthError] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [slowStart, setSlowStart] = useState(false)
   const [templates, setTemplates] = useState<Template[]>([])
   const [samples, setSamples] = useState<DatasheetSummary[] | null>(null)
   const [requirements, setRequirements] = useState<Requirement[]>([])
@@ -26,25 +27,35 @@ export default function App() {
   const check = useCheckRun()
 
   useEffect(() => {
-    api.health().then(setHealth, () => setHealthError(true))
-    api.templates().then(
-      (t) => {
+    // The demo backend may be waking up: retry quietly and show a neutral notice if slow.
+    let cancelled = false
+    const slowTimer = setTimeout(() => setSlowStart(true), 2500)
+    withRetry(() => api.health(), retryDelays).then(
+      (h) => !cancelled && setHealth(h),
+      () => undefined,
+    )
+    Promise.all([withRetry(() => api.templates(), retryDelays), withRetry(() => api.samples(), retryDelays)])
+      .then(([t, s]) => {
+        if (cancelled) return
         setTemplates(t)
         if (t[0]) setRequirements(t[0].requirements)
-      },
-      (e: Error) => setLoadError(e.message),
-    )
-    api.samples().then(
-      (s) => {
         setSamples(s)
         if (s[0]) setDatasheet(s[0])
-      },
-      (e: Error) => {
+      })
+      .catch(() => {
+        if (cancelled) return
         setSamples([])
-        setLoadError(e.message)
-      },
-    )
-  }, [])
+        setLoadError('The demo server is still starting. Please reload the page in a moment.')
+      })
+      .finally(() => {
+        clearTimeout(slowTimer)
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+      clearTimeout(slowTimer)
+    }
+  }, [retryDelays])
 
   const invalid = useMemo(() => hasErrors(validateRequirements(requirements)), [requirements])
   const canRun = !check.running && !invalid && requirements.length > 0 && datasheet !== null
@@ -71,7 +82,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <Header health={health} healthError={healthError} dark={dark} onToggleTheme={toggle} />
+      <Header dark={dark} onToggleTheme={toggle} />
 
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -98,7 +109,19 @@ export default function App() {
             </p>
           </div>
         )}
-        {loadError && <ErrorBanner title="Could not load initial data" messages={[loadError]} onDismiss={() => setLoadError(null)} />}
+        {loading && slowStart && (
+          <div
+            className="flex items-center gap-3 rounded-lg border border-accent-100 bg-accent-50/60 p-3 text-sm text-slate-700 dark:border-accent-600/30 dark:bg-accent-600/10 dark:text-slate-200"
+            role="status"
+          >
+            <Loader2 className="size-4 shrink-0 animate-spin text-accent-600 dark:text-accent-400" aria-hidden />
+            <p>
+              <strong>Starting the demo server…</strong> The free hosting sleeps when idle, so the first load can take up
+              to a minute.
+            </p>
+          </div>
+        )}
+        {loadError && <ErrorBanner title="Still waking up" messages={[loadError]} onDismiss={() => setLoadError(null)} />}
 
         <RequirementsEditor requirements={requirements} onChange={setRequirements} templates={templates} disabled={check.running} />
         <DatasheetPicker samples={samples} selected={datasheet} onSelect={setDatasheet} disabled={check.running} />
