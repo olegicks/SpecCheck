@@ -2,6 +2,7 @@ import { Info, Loader2, Play, ShieldCheck } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { WAKE_UP_DELAYS_MS, api, withRetry } from './api/client'
 import type { DatasheetSummary, Health, Requirement, RequirementResult, Template } from './api/types'
+import { ExampleBanner } from './components/ExampleBanner'
 import { Header } from './components/Header'
 import { Button, ErrorBanner } from './components/ui'
 import { DatasheetPicker } from './features/datasheet/DatasheetPicker'
@@ -76,6 +77,10 @@ export default function App({ retryDelays = WAKE_UP_DELAYS_MS }: { retryDelays?:
     void check.start(datasheet.id, requirements.map(cleanRequirement))
   }
 
+  const usingExample = !!datasheet?.is_sample
+  const scrollToDatasheet = () =>
+    document.getElementById('section-datasheet')?.closest('section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
   const selected = check.run?.results.find((r) => r.requirement.id === selectedId) ?? null
   const closeDrawer = useCallback(() => setSelectedId(null), [])
   const onUpdated = useCallback((updated: RequirementResult) => void check.applyUpdate(updated), [check])
@@ -123,6 +128,10 @@ export default function App({ retryDelays = WAKE_UP_DELAYS_MS }: { retryDelays?:
         )}
         {loadError && <ErrorBanner title="Still waking up" messages={[loadError]} onDismiss={() => setLoadError(null)} />}
 
+        {usingExample && !loading && (
+          <ExampleBanner requirementCount={requirements.length} canRun={canRun} onRun={run} onUseOwn={scrollToDatasheet} />
+        )}
+
         <RequirementsEditor requirements={requirements} onChange={setRequirements} templates={templates} disabled={check.running} />
         <DatasheetPicker samples={samples} selected={datasheet} onSelect={setDatasheet} disabled={check.running} />
 
@@ -131,6 +140,11 @@ export default function App({ retryDelays = WAKE_UP_DELAYS_MS }: { retryDelays?:
             <p className="font-medium text-slate-900 dark:text-white">
               {requirements.length} requirement{requirements.length === 1 ? '' : 's'} against{' '}
               <span className="font-mono text-accent-700 dark:text-accent-400">{datasheet?.filename ?? 'no datasheet'}</span>
+              {usingExample && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 align-middle text-[11px] font-semibold tracking-wide text-amber-800 uppercase dark:bg-amber-500/15 dark:text-amber-300">
+                  Example
+                </span>
+              )}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400" id="run-hint">
               {disabledReason ?? 'Cost is capped per run (max steps, pages and tokens).'}

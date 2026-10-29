@@ -38,6 +38,19 @@ describe('App flow', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('clearly marks the preloaded example and can run it from the banner', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    const banner = await screen.findByRole('region', { name: /Ready to run/ })
+    expect(within(banner).getByText('Example loaded')).toBeInTheDocument()
+    expect(within(banner).getByText(/not a real product/)).toBeInTheDocument()
+    expect(screen.getByText('Example')).toBeInTheDocument() // pill next to the file name
+    const runExample = within(banner).getByRole('button', { name: 'Run the example' })
+    await waitFor(() => expect(runExample).toBeEnabled())
+    await user.click(runExample)
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+  })
+
   it('disables the run button while requirements are invalid', async () => {
     const user = userEvent.setup()
     render(<App />)
