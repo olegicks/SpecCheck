@@ -21,6 +21,11 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/pyproject.toml
+      - name: Production install smoke test (runtime deps only, like the Docker image)
+        run: |
+          python -m venv /tmp/prod
+          /tmp/prod/bin/pip install .
+          cd /tmp && SPECCHECK_DISABLE_DOTENV=1 /tmp/prod/bin/python -c "import app.asgi"
       - run: pip install -e ".[dev]"
       - name: Ruff
         run: |
